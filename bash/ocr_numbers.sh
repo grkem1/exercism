@@ -1,29 +1,30 @@
 #!/usr/bin/env bash
 
-#      _  _     _  _  _  _  _  _  #
-#    | _| _||_||_ |_   ||_||_|| | # decimal numbers.
-#    ||_  _|  | _||_|  ||_| _||_| #
-#                                 # fourth line is always blank
+: '       _   _       _   _   _   _   _   _  '
+: '    |  _|  _| |_| |_  |_    | |_| |_| | | ' decimal numbers.
+: '    | |_   _|   |  _| |_|   | |_|  _| |_| '
+: '                                          ' fourth row is always blank
  
-log2() {
+fail() {
+	echo "$@" >&2
+	exit 1
+}
+# return the corresponding value in {0..9} given the bitmask
+# return "?" if the bitmask does not correspond to a number
+value() {
 	input=$1
-	for ((output=0; input > 1; output++)); do
+	for (( output = 0; input > 1; ++output )); do
 		(( input /= 2 ))
 	done
-	if (( input == 0 )) ; then output="?"; fi
+	# shellcheck disable=SC2125
+	(( input == 0 )) && output=?
 	echo "$output"
 }
 main() {
-	mapfile -t array
-	if (( ${#array[@]} % 4 )); then
-		echo Number of input lines is not a multiple of four
-		exit 1
-	fi
-	for row in "${array[@]}"; do
-		if (( ${#row} % 3 )); then
-			echo Number of input columns is not a multiple of three
-			exit 1
-		fi
+	mapfile -t rows
+	(( ${#rows[@]} % 4 ))  && fail Number of input lines is not a multiple of four
+	for row in "${rows[@]}"; do
+		(( ${#row} % 3 ))    && fail Number of input columns is not a multiple of three
 	done
 	# Define bitmasks for rows of 4x3 grid to be tested. Each bitmask filters
 	# the possible numeric values for the number to have after the respective
@@ -36,18 +37,19 @@ main() {
 	declare -A mid=(["| |"]=1    [" _|"]=12   ["  |"]=130 ["|_|"]=784 ["|_ "]=96) # sanity check:     total = 1023
 	declare -A low=(["|_|"]=321  ["  |"]=146  ["|_ "]=4   [" _|"]=552)            # sanity check:     total = 1023
 	declare -A bot=(["   "]=1023)                                                 # valid chars have blank bottom row
-	out=""
-	for (( row = 0; row < ${#array[@]}; row+=4 )); do
-		for (( col = 0; col < ${#array[$row]}; col+= 3));do
-			(( number = 1023
-		            & top[${array[row+0]:col:3}]
-			          & mid[${array[row+1]:col:3}]
-		            & low[${array[row+2]:col:3}]
-		            & bot[${array[row+3]:col:3}] ))
-			out+=$(log2 $number)
+	out=
+	for (( row = 0; row < ${#rows[@]}; row += 4 )); do
+		for (( col = 0; col < ${#rows[$row]}; col += 3));do
+			(( bitmask = 1023
+				& top[${rows[row+0]:col:3}]
+				& mid[${rows[row+1]:col:3}]
+				& low[${rows[row+2]:col:3}]
+				& bot[${rows[row+3]:col:3}] ))
+			out+=$(value $bitmask)
 		done
 		out+=,
 	done
+	# shellcheck disable=SC2086
 	echo ${out%,}
 }
 
